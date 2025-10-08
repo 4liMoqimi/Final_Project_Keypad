@@ -1,0 +1,44 @@
+#ifndef _KEYPAD_H
+#define _KEYPAD_H
+
+#include <stdint.h>
+
+typedef struct 
+{
+    volatile uint8_t* DDR;
+    volatile uint8_t* PORT;
+    volatile uint8_t* PIN;
+    uint8_t pinNumber;
+} pinConfig;
+
+typedef struct 
+{
+    uint8_t rowCount;
+    uint8_t colCount;
+    pinConfig* rowPins;
+    pinConfig* colPins;
+    const char* lookupTable;                 
+    void (*onKeyPressed)(uint16_t);
+    void (*onKeyRepeat)(char);             
+    char lastKey;
+    uint16_t debounceCounter;                
+    uint16_t repeatCounter;                 
+} MatrixKeypad_t;
+
+void MatrixKeypad_Init(MatrixKeypad_t* keypad,
+                       uint8_t rows,
+                       uint8_t cols,
+                       pinConfig* rowPins,
+                       pinConfig* colPins,
+                       const char* lookupTable,
+                       void (*callback)(uint16_t));
+
+void MatrixKeypad_ISR(MatrixKeypad_t* keypad);
+
+void SetCallback_MatrixKeypad(MatrixKeypad_t* keypad,
+                              void (*callback)(uint16_t));
+
+void SetRepeatCallback_MatrixKeypad(MatrixKeypad_t* keypad,
+                                    void (*callback)(char));
+
+#endif

@@ -1,0 +1,99 @@
+#include "KeyPad.h"
+
+#define DEBOUNCE_TICKS 3  
+#define REPEAT_START   50
+#define REPEAT_NEXT    20
+
+void MatrixKeypad_Init(MatrixKeypad_t* keypad,
+                       uint8_t rows,
+                       uint8_t cols,
+                       pinConfig* rowPins,
+                       pinConfig* colPins,
+                       const char* lookupTable,
+                       void (*callback)(char)) 
+{
+    uint8_t i;
+    keypad->rowCount = rows;
+    keypad->colCount = cols;
+    keypad->rowPins = rowPins;
+    keypad->colPins = colPins;
+    keypad->lookupTable = lookupTable;
+    keypad->onKeyPressed = callback;
+    keypad->onKeyRepeat = 0;
+    keypad->lastKey = 0;
+    keypad->debounceCounter = 0;
+    keypad->repeatCounter = 0;
+
+    for (i = 0; i < rows; i++) {
+        *rowPins[i].DDR  |= (1 << rowPins[i].pinNumber);
+        *rowPins[i].PORT |= (1 << rowPins[i].pinNumber);
+    }
+
+    for (i = 0; i < cols; i++) {
+        *colPins[i].DDR  &= ~(1 << colPins[i].pinNumber);
+        *colPins[i].PORT |=  (1 << colPins[i].pinNumber);
+    }
+}
+
+void MatrixKeypad_ISR(MatrixKeypad_t* keypad) 
+{
+    char detectedKey = 0;
+    uint8_t r, c;
+
+    for (r = 0; r < keypad->rowCount; r++) 
+    {
+        *keypad->rowPins[r].PORT &= ~(1 << keypad->rowPins[r].pinNumber);
+
+        for (c = 0; c < keypad->colCount; c++) 
+        {
+            if (((*keypad->colPins[c].PIN) & (1 << keypad->colPins[c].pinNumber)) == 0) 
+            {
+                detectedKey = keypad->lookupTable[r * keypad->colCount + c];
+                break;
+            }
+        }
+
+        *keypad->rowPins[r].PORT |= (1 << keypad->rowPins[r].pinNumber);
+        if (detectedKey) break;
+    }
+
+    if (detectedKey) 
+    {
+        if (detectedKey != keypad->lastKey) 
+        {
+            keypad->debounceCounter++;
+            if (keypad->debounceCounter >= DEBOUNCE_TICKS) 
+            {
+                keypad->lastKey = detectedKey;
+                keypad->debounceCounter = 0;
+                keypad->repeatCounter = 0;
+                if (keypad->onKeyPressed) keypad->onKeyPressed(detectedKey);
+            }
+        } else 
+        {
+            keypad->debounceCounter = 0;
+            keypad->repeatCounter++;
+            if (keypad->repeatCounter == REPEAT_START ||
+                (keypad->repeatCounter > REPEAT_START &&
+                 (keypad->repeatCounter - REPEAT_START) % REPEAT_NEXT == 0)) 
+            {
+                if (keypad->onKeyRepeat) keypad->onKeyRepeat(detectedKey);
+            }
+        }
+    } else 
+    {
+        keypad->lastKey = 0;
+        keypad->debounceCounter = 0;
+        keypad->repeatCounter = 0;
+    }
+}
+
+void SetCallback_MatrixKeypad(MatrixKeypad_t* keypad, void (*callback)(char)) 
+{
+    keypad->onKeyPressed = callback;
+}
+
+void SetRepeatCallback_MatrixKeypad(MatrixKeypad_t* keypad, void (*callback)(char)) 
+{
+    keypad->onKeyRepeat = callback;
+}

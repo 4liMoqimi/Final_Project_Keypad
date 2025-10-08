@@ -1,0 +1,78 @@
+#include <mega32.h>
+#include <alcd.h>  
+#include <delay.h>
+#include "KeyPad.h" 
+
+char keypadTable_2[4][4] = 
+{
+    {'1','2','3','A'},
+    {'4','5','6','B'},
+    {'7','8','9','C'},
+    {'*','0','#','D'}
+};
+
+char keypadTable_1[4][3] = 
+{
+    {'1','2','3'},
+    {'4','5','6'},
+    {'7','8','9'},
+    {'*','0','#'}
+};
+
+pinConfig rowPins[4] = 
+{
+    {&DDRA, &PORTA, &PINA, 0},
+    {&DDRA, &PORTA, &PINA, 1},
+    {&DDRA, &PORTA, &PINA, 2},
+    {&DDRA, &PORTA, &PINA, 3}
+};
+
+pinConfig colPins[4] = 
+{
+    {&DDRA, &PORTA, &PINA, 4},
+    {&DDRA, &PORTA, &PINA, 5},
+    {&DDRA, &PORTA, &PINA, 6},
+    {&DDRA, &PORTA, &PINA, 7}
+};
+
+MatrixKeypad_t keypad1;
+MatrixKeypad_t keypad2;
+
+void onKeyPressed(char key) 
+{
+    lcd_clear();
+    lcd_gotoxy(0,0);
+    lcd_putsf("Key Pressed:");
+    lcd_gotoxy(0,1);
+    
+    if(key == 'A')       lcd_putsf("F1");
+    else if(key == 'B')  lcd_putsf("F2");
+    else if(key == 'C')  lcd_putsf("F3");
+    else if(key == 'D')  lcd_putsf("F4");           
+    else
+     lcd_putchar(key);
+    
+}
+
+void main(void) {
+
+
+    lcd_init(16);
+
+    lcd_clear();
+    
+    lcd_gotoxy(1,0);
+    lcd_putsf("Matrix Keypad");
+    lcd_gotoxy(5,1);
+    lcd_putsf("Ready");
+    delay_ms(100);
+
+    MatrixKeypad_Init(&keypad1, 4, 3, rowPins, colPins, (const unsigned char*)keypadTable_1, onKeyPressed);
+    
+    SetCallback_MatrixKeypad(&keypad1,onKeyPressed);
+
+    while (1) {
+
+        MatrixKeypad_ISR(&keypad1);
+    }
+}
